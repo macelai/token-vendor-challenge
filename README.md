@@ -4,7 +4,8 @@ This project is designed to test your skills in smart contract development using
 
 ## Project Overview
 
-You are tasked with implementing a token vendor machine that allows users to buy and sell tokens. The project consists of two main contracts:
+You are tasked with implementing a token vendor machine that allows users to buy and sell tokens. The project consists
+of two main contracts:
 
 1. `BlockfulToken.sol`: An ERC20 token contract
 2. `TokenVendor.sol`: A vendor contract for buying and selling tokens
@@ -19,10 +20,12 @@ To get started with this project, follow these steps:
 ## Your Tasks
 
 1. Implement the `BlockfulToken` contract:
+
    - It should be an ERC20 token with a name, symbol, and 18 decimals.
    - Initial supply should be 1,000,000 tokens.
 
 2. Implement the `TokenVendor` contract with the following functionality:
+
    - Allow users to buy tokens with ETH (1 ETH = 100 tokens)
    - Allow users to sell tokens back to the contract
    - Allow the owner to withdraw ETH from the contract
@@ -30,6 +33,7 @@ To get started with this project, follow these steps:
    - Emit events for token purchases, sales, and ETH withdrawals
 
 3. Complete the test file `test/TokenVendor.t.sol`:
+
    - We've provided some basic "happy path" tests
    - Implement additional tests for edge cases and potential failure scenarios
    - Aim for at least 90% test coverage
@@ -91,6 +95,7 @@ Please submit your completed project as a Git repository. Make sure to include:
 
 ## Note
 
-This project uses [Foundry](https://getfoundry.sh/). If you're new to Foundry, check out the [Foundry Book](https://book.getfoundry.sh/) for detailed instructions and tutorials.
+This project uses [Foundry](https://getfoundry.sh/). If you're new to Foundry, check out the
+[Foundry Book](https://book.getfoundry.sh/) for detailed instructions and tutorials.
 
 Good luck with the challenge! We're excited to see your implementation.
