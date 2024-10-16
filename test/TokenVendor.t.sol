@@ -17,9 +17,8 @@ contract TokenVendorTest is Test {
     function setUp() public {
         owner = address(this);
         user1 = address(0x1);
-        token = new BlockfulToken(INITIAL_SUPPLY);
+        token = new BlockfulToken(INITIAL_SUPPLY, address(vendor));
         vendor = new TokenVendor(address(token), TOKEN_PRICE);
-        token.transfer(address(vendor), INITIAL_SUPPLY);
     }
 
     function testBuyTokens() public {

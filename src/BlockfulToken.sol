@@ -1,18 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
+
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
 pragma solidity >=0.8.25;
 
-contract BlockfulToken {
-    constructor(uint256 initialSupply) { }
+contract BlockfulToken is ERC20 {
 
-    function transfer(address to, uint256 amount) public {
-        // Implement transfer logic
-    }
-
-    function balanceOf(address account) public view returns (uint256) {
-        // Implement balanceOf logic
-    }
-
-    function approve(address spender, uint256 amount) public {
-        // Implement approve logic
+    constructor(uint256 initialSupply, address tokenVendor) ERC20("BlockfulToken", "BFT") {
+        _mint(tokenVendor, initialSupply);
     }
 }
