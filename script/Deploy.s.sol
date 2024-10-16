@@ -9,7 +9,7 @@ import { BaseScript } from "./Base.s.sol";
 /// @dev See the Solidity Scripting tutorial: https://book.getfoundry.sh/tutorials/solidity-scripting
 contract Deploy is BaseScript {
     function run() public broadcast returns (BlockfulToken token, TokenVendor vendor) {
-        token = new BlockfulToken(100 ether, address(vendor));
+        token = new BlockfulToken(100 ether);
         vendor = new TokenVendor(address(token), 0.001 ether);
     }
 }
