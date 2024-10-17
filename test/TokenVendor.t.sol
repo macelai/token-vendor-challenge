@@ -144,6 +144,21 @@ contract TokenVendorTest is Test {
         vendor.buyTokens{ value: ethAmount }(proof);
     }
 
+    function testBuyTokensNotWhitelisted() public {
+        uint256 ethAmount = 1 ether;
+
+        bytes32[] memory data = new bytes32[](2);
+        data[0] = keccak256(abi.encodePacked(user1));
+        data[1] = keccak256(abi.encodePacked(user2));
+        bytes32[] memory proof = merkle.getProof(data, 1);
+
+        vm.warp(whitelistStartTime + 1);
+        vm.deal(user1, ethAmount);
+        vm.prank(user1);
+        vm.expectRevert(ITokenVendorEventsAndErrors.NotWhitelisted.selector);
+        vendor.buyTokens{ value: ethAmount }(proof);
+    }
+
     function testBuyTokensInsufficientEth() public {
         vm.warp(publicStartTime + 1);
         vm.expectRevert(ITokenVendorEventsAndErrors.InsufficientEth.selector);
