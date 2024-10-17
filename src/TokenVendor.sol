@@ -7,11 +7,12 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import { ITokenVendorEventsAndErrors } from "./interfaces/ITokenVendorEventsAndErrors.sol";
 
 /// @title TokenVendor
 /// @notice A contract for buying and selling tokens with whitelist and timed sales
 /// @dev Implements ReentrancyGuard, Ownable, and Pausable for enhanced security
-contract TokenVendor is ReentrancyGuard, Ownable, Pausable {
+contract TokenVendor is ReentrancyGuard, Ownable, Pausable, ITokenVendorEventsAndErrors {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable TOKEN;
@@ -19,23 +20,6 @@ contract TokenVendor is ReentrancyGuard, Ownable, Pausable {
     uint256 public immutable WHITELIST_START_TIME;
     uint256 public immutable PUBLIC_START_TIME;
     bytes32 public immutable MERKLE_ROOT;
-
-    event TokensPurchased(address indexed buyer, uint256 amountOfETH, uint256 amountOfTokens);
-    event TokensSold(address indexed seller, uint256 amountOfTokens, uint256 amountOfETH);
-    event EthWithdrawn(address indexed owner, uint256 amount);
-
-    error InvalidTokenAddress();
-    error InvalidTokenPrice();
-    error InsufficientEth();
-    error InsufficientTokens();
-    error InsufficientEthInContract();
-    error NoEthToWithdraw();
-    error ZeroAmount();
-    error EthTransferFailed();
-    error DirectEthTransfer();
-    error SaleNotStarted();
-    error NotWhitelisted();
-    error InvalidStartTimes();
 
     /// @notice Initializes the TokenVendor contract
     /// @param _token Address of the ERC20 token
@@ -64,13 +48,7 @@ contract TokenVendor is ReentrancyGuard, Ownable, Pausable {
     /// @param _proof Merkle proof for whitelist verification
     function buyTokens(bytes32[] calldata _proof) public payable nonReentrant whenNotPaused {
         if (msg.value == 0) revert InsufficientEth();
-
-        if (block.timestamp < WHITELIST_START_TIME) {
-            revert SaleNotStarted();
-        } else if (block.timestamp < PUBLIC_START_TIME) {
-            bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
-            if (!MerkleProof.verify(_proof, MERKLE_ROOT, leaf)) revert NotWhitelisted();
-        }
+        _checkSaleStatus(_proof);
 
         uint256 tokenAmount = msg.value * TOKENS_PER_ETH;
         if (TOKEN.balanceOf(address(this)) < tokenAmount) revert InsufficientTokens();
@@ -87,8 +65,7 @@ contract TokenVendor is ReentrancyGuard, Ownable, Pausable {
         if (address(this).balance < ethAmount) revert InsufficientEthInContract();
 
         TOKEN.safeTransferFrom(msg.sender, address(this), _amount);
-        (bool sent,) = payable(msg.sender).call{ value: ethAmount }("");
-        if (!sent) revert EthTransferFailed();
+        _safeTransferETH(msg.sender, ethAmount);
         emit TokensSold(msg.sender, _amount, ethAmount);
     }
 
@@ -97,9 +74,7 @@ contract TokenVendor is ReentrancyGuard, Ownable, Pausable {
     function withdraw() public onlyOwner {
         uint256 balance = address(this).balance;
         if (balance == 0) revert NoEthToWithdraw();
-
-        (bool sent,) = payable(owner()).call{ value: balance }("");
-        if (!sent) revert EthTransferFailed();
+        _safeTransferETH(owner(), balance);
         emit EthWithdrawn(owner(), balance);
     }
 
@@ -113,6 +88,25 @@ contract TokenVendor is ReentrancyGuard, Ownable, Pausable {
     /// @dev Only callable by the contract owner
     function unpause() public onlyOwner {
         _unpause();
+    }
+
+    /// @dev Checks the current sale status and user's eligibility
+    /// @param _proof Merkle proof for whitelist verification
+    function _checkSaleStatus(bytes32[] calldata _proof) internal view {
+        if (block.timestamp < WHITELIST_START_TIME) {
+            revert SaleNotStarted();
+        } else if (block.timestamp < PUBLIC_START_TIME) {
+            bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
+            if (!MerkleProof.verify(_proof, MERKLE_ROOT, leaf)) revert NotWhitelisted();
+        }
+    }
+
+    /// @dev Safely transfers ETH to the specified address
+    /// @param to The address to transfer ETH to
+    /// @param amount The amount of ETH to transfer
+    function _safeTransferETH(address to, uint256 amount) internal {
+        (bool sent,) = payable(to).call{ value: amount }("");
+        if (!sent) revert EthTransferFailed();
     }
 
     /// @dev Prevents accidental ETH transfers to the contract

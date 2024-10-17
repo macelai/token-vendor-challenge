@@ -8,6 +8,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { Merkle } from "murky-merkle/src/Merkle.sol";
 import { console2 } from "forge-std/console2.sol";
+import { ITokenVendorEventsAndErrors } from "../src/interfaces/ITokenVendorEventsAndErrors.sol";
 
 contract TokenVendorTest is Test {
     TokenVendor public vendor;
@@ -51,7 +52,7 @@ contract TokenVendorTest is Test {
 
     // Deployment tests
     function testInvalidTokenAddress() public {
-        vm.expectRevert(TokenVendor.InvalidTokenAddress.selector);
+        vm.expectRevert(ITokenVendorEventsAndErrors.InvalidTokenAddress.selector);
         new TokenVendor(
             address(0),
             TOKEN_PRICE,
@@ -62,7 +63,7 @@ contract TokenVendorTest is Test {
     }
 
     function testInvalidTokenPrice() public {
-        vm.expectRevert(TokenVendor.InvalidTokenPrice.selector);
+        vm.expectRevert(ITokenVendorEventsAndErrors.InvalidTokenPrice.selector);
         new TokenVendor(
             address(token),
             0,
@@ -73,7 +74,7 @@ contract TokenVendorTest is Test {
     }
 
     function testInvalidStartTimes() public {
-        vm.expectRevert(TokenVendor.InvalidStartTimes.selector);
+        vm.expectRevert(ITokenVendorEventsAndErrors.InvalidStartTimes.selector);
         new TokenVendor(
             address(token),
             TOKEN_PRICE,
@@ -106,7 +107,7 @@ contract TokenVendorTest is Test {
         vm.prank(user1);
 
         vm.expectEmit(true, false, false, true);
-        emit TokenVendor.TokensPurchased(user1, ethAmount, expectedTokens);
+        emit ITokenVendorEventsAndErrors.TokensPurchased(user1, ethAmount, expectedTokens);
         vendor.buyTokens{ value: ethAmount }(new bytes32[](0));
     }
 
@@ -139,13 +140,13 @@ contract TokenVendorTest is Test {
         vm.warp(whitelistStartTime - 1);
         vm.deal(user1, ethAmount);
         vm.prank(user1);
-        vm.expectRevert(TokenVendor.SaleNotStarted.selector);
+        vm.expectRevert(ITokenVendorEventsAndErrors.SaleNotStarted.selector);
         vendor.buyTokens{ value: ethAmount }(proof);
     }
 
     function testBuyTokensInsufficientEth() public {
         vm.warp(publicStartTime + 1);
-        vm.expectRevert(TokenVendor.InsufficientEth.selector);
+        vm.expectRevert(ITokenVendorEventsAndErrors.InsufficientEth.selector);
         vm.prank(user1);
         vendor.buyTokens{ value: 0 }(new bytes32[](0));
     }
@@ -160,7 +161,7 @@ contract TokenVendorTest is Test {
         vm.warp(publicStartTime + 1);
         vm.deal(user1, ethAmount);
         vm.prank(user1);
-        vm.expectRevert(TokenVendor.InsufficientTokens.selector);
+        vm.expectRevert(ITokenVendorEventsAndErrors.InsufficientTokens.selector);
         vendor.buyTokens{ value: ethAmount }(new bytes32[](0));
     }
 
@@ -202,13 +203,13 @@ contract TokenVendorTest is Test {
 
         // Sell tokens
         vm.expectEmit(true, false, false, true);
-        emit TokenVendor.TokensSold(user1, tokenAmount, expectedEth);
+        emit ITokenVendorEventsAndErrors.TokensSold(user1, tokenAmount, expectedEth);
         vendor.sellTokens(tokenAmount);
         vm.stopPrank();
     }
 
     function testSellTokensZeroAmount() public {
-        vm.expectRevert(TokenVendor.ZeroAmount.selector);
+        vm.expectRevert(ITokenVendorEventsAndErrors.ZeroAmount.selector);
         vm.prank(user1);
         vendor.sellTokens(0);
     }
@@ -226,7 +227,7 @@ contract TokenVendorTest is Test {
 
         vm.startPrank(user1);
         token.approve(address(vendor), tokenAmount);
-        vm.expectRevert(TokenVendor.InsufficientEthInContract.selector);
+        vm.expectRevert(ITokenVendorEventsAndErrors.InsufficientEthInContract.selector);
         vendor.sellTokens(tokenAmount);
         vm.stopPrank();
     }
@@ -261,13 +262,13 @@ contract TokenVendorTest is Test {
 
         // Withdraw ETH
         vm.expectEmit(true, false, false, true);
-        emit TokenVendor.EthWithdrawn(owner, ethAmount);
+        emit ITokenVendorEventsAndErrors.EthWithdrawn(owner, ethAmount);
         vm.prank(owner);
         vendor.withdraw();
     }
 
     function testWithdrawNoEth() public {
-        vm.expectRevert(TokenVendor.NoEthToWithdraw.selector);
+        vm.expectRevert(ITokenVendorEventsAndErrors.NoEthToWithdraw.selector);
         vm.prank(owner);
         vendor.withdraw();
     }
@@ -320,7 +321,7 @@ contract TokenVendorTest is Test {
 
     // Miscellaneous tests
     function testDirectEthTransfer() public {
-        vm.expectRevert(TokenVendor.DirectEthTransfer.selector);
+        vm.expectRevert(ITokenVendorEventsAndErrors.DirectEthTransfer.selector);
         address(vendor).call{value: 1 ether}("");
     }
 
@@ -339,7 +340,7 @@ contract TokenVendorTest is Test {
 
         vm.startPrank(address(malicious));
         token.approve(address(vendor), tokenAmount);
-        vm.expectRevert(TokenVendor.EthTransferFailed.selector);
+        vm.expectRevert(ITokenVendorEventsAndErrors.EthTransferFailed.selector);
         vendor.sellTokens(tokenAmount);
         vm.stopPrank();
     }
@@ -355,7 +356,7 @@ contract TokenVendorTest is Test {
         vendor.transferOwnership(address(malicious));
 
         vm.prank(address(malicious));
-        vm.expectRevert(TokenVendor.EthTransferFailed.selector);
+        vm.expectRevert(ITokenVendorEventsAndErrors.EthTransferFailed.selector);
         vendor.withdraw();
     }
 }
