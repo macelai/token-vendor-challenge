@@ -21,23 +21,25 @@ jobs:
       - name: "Install Foundry"
         uses: "foundry-rs/foundry-toolchain@v1"
 
-      - name: Cache node_modules
+      - name: Cache yarn cache
         uses: actions/cache@v2
         with:
-          path: node_modules
-          key: ${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          path: ~/.cache/yarn
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
 
       - name: Use Node.js 21
         uses: actions/setup-node@v3
         with:
           node-version: 21
-          cache: "npm"
+          cache: "yarn"
 
       - name: "Install the Node.js dependencies"
-        run: "npm install"
+        run: "yarn install --frozen-lockfile"
 
       - name: "Lint the code"
-        run: "npm run lint"
+        run: "yarn lint"
 
       - name: "Add lint summary"
         run: |
@@ -53,20 +55,22 @@ jobs:
       - name: "Install Foundry"
         uses: "foundry-rs/foundry-toolchain@v1"
 
-      - name: Cache node_modules
+      - name: Cache yarn cache
         uses: actions/cache@v2
         with:
-          path: node_modules
-          key: ${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          path: ~/.cache/yarn
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
 
       - name: Use Node.js 21
         uses: actions/setup-node@v3
         with:
           node-version: 21
-          cache: "npm"
+          cache: "yarn"
 
       - name: "Install the Node.js dependencies"
-        run: "npm install"
+        run: "yarn install --frozen-lockfile"
 
       - name: "Build the contracts and print their size"
         run: "forge build --sizes"
@@ -86,20 +90,22 @@ jobs:
       - name: "Install Foundry"
         uses: "foundry-rs/foundry-toolchain@v1"
 
-      - name: Cache node_modules
+      - name: Cache yarn cache
         uses: actions/cache@v2
         with:
-          path: node_modules
-          key: ${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          path: ~/.cache/yarn
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
 
       - name: Use Node.js 21
         uses: actions/setup-node@v3
         with:
           node-version: 21
-          cache: "npm"
+          cache: "yarn"
 
       - name: "Install the Node.js dependencies"
-        run: "npm install"
+        run: "yarn install --frozen-lockfile"
 
       - name: "Show the Foundry config"
         run: "forge config"
