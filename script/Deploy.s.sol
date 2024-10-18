@@ -10,9 +10,8 @@ import { Merkle } from "murky-merkle/src/Merkle.sol";
 contract Deploy is BaseScript {
     function run() public broadcast returns (BlockfulToken token, TokenVendor vendor) {
         uint256 INITIAL_SUPPLY = 1_000_000 * 10 ** 18;
-        uint256 TOKEN_PRICE = 100; // 1 ETH = 100 tokens
-        uint256 WHITELIST_START_TIME = 1000;
-        uint256 PUBLIC_START_TIME = 2000;
+        uint256 WHITELIST_START_TIME = block.timestamp + 1 days;
+        uint256 PUBLIC_START_TIME = WHITELIST_START_TIME + 1 days;
 
         token = new BlockfulToken(INITIAL_SUPPLY);
 
@@ -23,13 +22,7 @@ contract Deploy is BaseScript {
         data[1] = keccak256(abi.encodePacked(address(0x5678))); // Replace with actual addresses
         bytes32 merkleRoot = merkle.getRoot(data);
 
-        vendor = new TokenVendor(
-            address(token),
-            TOKEN_PRICE,
-            WHITELIST_START_TIME,
-            PUBLIC_START_TIME,
-            merkleRoot
-        );
+        vendor = new TokenVendor(address(token), INITIAL_SUPPLY, WHITELIST_START_TIME, PUBLIC_START_TIME, merkleRoot);
 
         token.transfer(address(vendor), INITIAL_SUPPLY);
     }

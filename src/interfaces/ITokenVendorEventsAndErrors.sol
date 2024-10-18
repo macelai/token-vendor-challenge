@@ -27,11 +27,6 @@ interface ITokenVendorEventsAndErrors {
     error InvalidTokenAddress();
 
     /**
-     * @dev Revert with an error when an invalid token price is set.
-     */
-    error InvalidTokenPrice();
-
-    /**
      * @dev Revert with an error when insufficient ETH is sent.
      */
     error InsufficientEth();
@@ -80,4 +75,9 @@ interface ITokenVendorEventsAndErrors {
      * @dev Revert with an error when invalid start times are provided.
      */
     error InvalidStartTimes();
+
+    /**
+     * @dev Revert with an error when an invalid initial supply is provided.
+     */
+    error InvalidInitialSupply();
 }

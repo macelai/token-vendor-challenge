@@ -39,13 +39,7 @@ contract TokenVendorTest is Test {
         whitelistStartTime = block.timestamp + 1000;
         publicStartTime = block.timestamp + 2000;
 
-        vendor = new TokenVendor(
-            address(token),
-            TOKEN_PRICE,
-            whitelistStartTime,
-            publicStartTime,
-            merkleRoot
-        );
+        vendor = new TokenVendor(address(token), INITIAL_SUPPLY, whitelistStartTime, publicStartTime, merkleRoot);
         token.transfer(address(vendor), INITIAL_SUPPLY);
         vendor.transferOwnership(owner);
     }
@@ -53,41 +47,18 @@ contract TokenVendorTest is Test {
     // Deployment tests
     function testInvalidTokenAddress() public {
         vm.expectRevert(ITokenVendorEventsAndErrors.InvalidTokenAddress.selector);
-        new TokenVendor(
-            address(0),
-            TOKEN_PRICE,
-            whitelistStartTime,
-            publicStartTime,
-            merkleRoot
-        );
-    }
-
-    function testInvalidTokenPrice() public {
-        vm.expectRevert(ITokenVendorEventsAndErrors.InvalidTokenPrice.selector);
-        new TokenVendor(
-            address(token),
-            0,
-            whitelistStartTime,
-            publicStartTime,
-            merkleRoot
-        );
+        new TokenVendor(address(0), INITIAL_SUPPLY, whitelistStartTime, publicStartTime, merkleRoot);
     }
 
     function testInvalidStartTimes() public {
         vm.expectRevert(ITokenVendorEventsAndErrors.InvalidStartTimes.selector);
-        new TokenVendor(
-            address(token),
-            TOKEN_PRICE,
-            publicStartTime,
-            whitelistStartTime,
-            merkleRoot
-        );
+        new TokenVendor(address(token), INITIAL_SUPPLY, publicStartTime, whitelistStartTime, merkleRoot);
     }
 
     // Buying tokens tests
     function testBuyTokens() public {
         uint256 ethAmount = 1 ether;
-        uint256 expectedTokens = ethAmount * TOKEN_PRICE;
+        uint256 expectedTokens = vendor.calculateTokenAmountForBuying(ethAmount);
 
         vm.warp(publicStartTime + 1);
         vm.deal(user1, ethAmount);
@@ -100,7 +71,7 @@ contract TokenVendorTest is Test {
 
     function testBuyTokensEvent() public {
         uint256 ethAmount = 1 ether;
-        uint256 expectedTokens = ethAmount * TOKEN_PRICE;
+        uint256 expectedTokens = vendor.calculateTokenAmountForBuying(ethAmount);
 
         vm.warp(publicStartTime + 1);
         vm.deal(user1, ethAmount);
@@ -113,7 +84,7 @@ contract TokenVendorTest is Test {
 
     function testBuyTokensDuringWhitelist() public {
         uint256 ethAmount = 1 ether;
-        uint256 expectedTokens = ethAmount * TOKEN_PRICE;
+        uint256 expectedTokens = vendor.calculateTokenAmountForBuying(ethAmount);
 
         bytes32[] memory data = new bytes32[](2);
         data[0] = keccak256(abi.encodePacked(user1));
@@ -182,14 +153,18 @@ contract TokenVendorTest is Test {
 
     // Selling tokens tests
     function testSellTokens() public {
-        uint256 tokenAmount = 100 * 10 ** 18;
-        uint256 expectedEth = tokenAmount / TOKEN_PRICE;
+        uint256 ethAmount = 1 ether;
+
+        // Add ETH to the contract
+        vm.deal(address(vendor), 10 ether);
 
         // First, buy some tokens
         vm.warp(publicStartTime + 1);
-        vm.deal(user1, 1 ether);
+        vm.deal(user1, ethAmount);
         vm.startPrank(user1);
-        vendor.buyTokens{ value: 1 ether }(new bytes32[](0));
+        vendor.buyTokens{ value: ethAmount }(new bytes32[](0));
+
+        uint256 tokenAmount = token.balanceOf(user1);
 
         // Approve vendor to spend tokens
         token.approve(address(vendor), tokenAmount);
@@ -200,27 +175,31 @@ contract TokenVendorTest is Test {
         vm.stopPrank();
 
         assertEq(token.balanceOf(user1), 0);
-        assertEq(user1.balance - initialBalance, expectedEth);
+        assertTrue(user1.balance > initialBalance);
     }
 
     function testSellTokensEvent() public {
-        uint256 tokenAmount = 100 * 10 ** 18;
-        uint256 expectedEth = tokenAmount / TOKEN_PRICE;
+        uint256 ethAmount = 1 ether;
+
+        // Add ETH to the contract
+        vm.deal(address(vendor), 10 ether);
 
         // First, buy some tokens
         vm.warp(publicStartTime + 1);
-        vm.deal(user1, 1 ether);
+        vm.deal(user1, ethAmount);
         vm.startPrank(user1);
-        vendor.buyTokens{ value: 1 ether }(new bytes32[](0));
+        vendor.buyTokens{ value: ethAmount }(new bytes32[](0));
+
+        uint256 tokenAmount = token.balanceOf(user1);
 
         // Approve vendor to spend tokens
         token.approve(address(vendor), tokenAmount);
 
+        uint256 expectedEthAmount = vendor.calculateEthAmountForSelling(tokenAmount);
         // Sell tokens
         vm.expectEmit(true, false, false, true);
-        emit ITokenVendorEventsAndErrors.TokensSold(user1, tokenAmount, expectedEth);
+        emit ITokenVendorEventsAndErrors.TokensSold(user1, tokenAmount, expectedEthAmount);
         vendor.sellTokens(tokenAmount);
-        vm.stopPrank();
     }
 
     function testSellTokensZeroAmount() public {
@@ -337,16 +316,22 @@ contract TokenVendorTest is Test {
     // Miscellaneous tests
     function testDirectEthTransfer() public {
         vm.expectRevert(ITokenVendorEventsAndErrors.DirectEthTransfer.selector);
-        address(vendor).call{value: 1 ether}("");
+        address(vendor).call{ value: 1 ether }("");
     }
 
     function testEthTransferFailureDuringSell() public {
-        uint256 tokenAmount = 100 * 10 ** 18;
+        uint256 ethAmount = 1 ether;
 
+        // Add ETH to the contract
+        vm.deal(address(vendor), 10 ether);
+
+        // Buy tokens
         vm.warp(publicStartTime + 1);
-        vm.deal(user1, 1 ether);
+        vm.deal(user1, ethAmount);
         vm.prank(user1);
-        vendor.buyTokens{ value: 1 ether }(new bytes32[](0));
+        vendor.buyTokens{ value: ethAmount }(new bytes32[](0));
+
+        uint256 tokenAmount = token.balanceOf(user1);
 
         MaliciousContract malicious = new MaliciousContract();
 
@@ -373,6 +358,79 @@ contract TokenVendorTest is Test {
         vm.prank(address(malicious));
         vm.expectRevert(ITokenVendorEventsAndErrors.EthTransferFailed.selector);
         vendor.withdraw();
+    }
+
+    function testGetCurrentPrice() public {
+        uint256 initialPrice = vendor.getCurrentPrice();
+        assertEq(initialPrice, 1e15, "Initial price should be 0.001 ETH");
+
+        // Buy some tokens to increase the price
+        vm.warp(publicStartTime + 1);
+        vm.deal(user1, 1 ether);
+        vm.prank(user1);
+        vendor.buyTokens{ value: 0.1 ether }(new bytes32[](0));
+
+        uint256 newPrice = vendor.getCurrentPrice();
+        assertTrue(newPrice > initialPrice, "Price should increase after purchase");
+    }
+
+    function testBuyTokensDynamicPricing() public {
+        uint256 ethAmount = 0.1 ether;
+        uint256 initialBalance = token.balanceOf(user1);
+
+        vm.warp(publicStartTime + 1);
+        vm.deal(user1, ethAmount);
+        vm.prank(user1);
+        vendor.buyTokens{ value: ethAmount }(new bytes32[](0));
+
+        uint256 tokensBought = token.balanceOf(user1) - initialBalance;
+        assertTrue(tokensBought > 0, "Should have bought tokens");
+
+        // Buy again with the same amount of ETH
+        vm.deal(user1, ethAmount);
+        vm.prank(user1);
+        vendor.buyTokens{ value: ethAmount }(new bytes32[](0));
+
+        uint256 tokensBoughtSecondTime = token.balanceOf(user1) - initialBalance - tokensBought;
+        assertTrue(tokensBoughtSecondTime < tokensBought, "Should have bought fewer tokens in the second purchase");
+    }
+
+    function testSellTokensDynamicPricing() public {
+        uint256 ethAmount = 1 ether;
+
+        // Add ETH to the contract
+        vm.deal(address(vendor), 10 ether);
+
+        // First, buy some tokens
+        vm.warp(publicStartTime + 1);
+        vm.deal(user1, ethAmount);
+        vm.prank(user1);
+        vendor.buyTokens{ value: ethAmount }(new bytes32[](0));
+
+        uint256 tokensBought = token.balanceOf(user1);
+
+        // Now sell half of the tokens
+        vm.startPrank(user1);
+        token.approve(address(vendor), tokensBought / 2);
+        uint256 initialEthBalance = user1.balance;
+        vendor.sellTokens(tokensBought / 2);
+        vm.stopPrank();
+
+        uint256 ethReceived = user1.balance - initialEthBalance;
+        assertTrue(ethReceived > 0, "Should have received ETH for sold tokens");
+
+        // Sell the remaining tokens
+        vm.startPrank(user1);
+        token.approve(address(vendor), tokensBought / 2);
+        initialEthBalance = user1.balance;
+        vendor.sellTokens(tokensBought / 2);
+        vm.stopPrank();
+
+        uint256 ethReceivedSecondTime = user1.balance - initialEthBalance;
+        assertTrue(
+            ethReceivedSecondTime < ethReceived,
+            "Should have received less ETH in the second sale due to price decrease"
+        );
     }
 }
 

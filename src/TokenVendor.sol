@@ -9,39 +9,82 @@ import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import { ITokenVendorEventsAndErrors } from "./interfaces/ITokenVendorEventsAndErrors.sol";
 
-/// @title TokenVendor
-/// @notice A contract for buying and selling tokens with whitelist and timed sales
+/// @title TokenVendor with Dynamic Pricing
+/// @notice A contract for buying and selling tokens with whitelist, timed sales, and dynamic pricing
 /// @dev Implements ReentrancyGuard, Ownable, and Pausable for enhanced security
 contract TokenVendor is ReentrancyGuard, Ownable, Pausable, ITokenVendorEventsAndErrors {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable TOKEN;
-    uint256 public immutable TOKENS_PER_ETH;
+    uint256 public immutable INITIAL_SUPPLY;
     uint256 public immutable WHITELIST_START_TIME;
     uint256 public immutable PUBLIC_START_TIME;
     bytes32 public immutable MERKLE_ROOT;
 
+    uint256 public constant INITIAL_PRICE = 1e15; // 0.001 ETH initial price
+    uint256 public constant PRICE_INCREMENT = 1e14; // 0.0001 ETH price increment per token sold
+
     /// @notice Initializes the TokenVendor contract
     /// @param _token Address of the ERC20 token
-    /// @param _tokensPerEth Exchange rate of tokens per ETH
+    /// @param _initialSupply Initial supply of tokens to be sold
     /// @param _whitelistStartTime Timestamp when the whitelist sale starts
     /// @param _publicStartTime Timestamp when the public sale starts
     /// @param _merkleRoot Merkle root of the whitelist
     constructor(
         address _token,
-        uint256 _tokensPerEth,
+        uint256 _initialSupply,
         uint256 _whitelistStartTime,
         uint256 _publicStartTime,
         bytes32 _merkleRoot
-    ) Ownable(msg.sender) {
+    )
+        Ownable(msg.sender)
+    {
         if (_token == address(0)) revert InvalidTokenAddress();
-        if (_tokensPerEth == 0) revert InvalidTokenPrice();
+        if (_initialSupply == 0) revert InvalidInitialSupply();
         if (_whitelistStartTime >= _publicStartTime) revert InvalidStartTimes();
         TOKEN = IERC20(_token);
-        TOKENS_PER_ETH = _tokensPerEth;
+        INITIAL_SUPPLY = _initialSupply;
         WHITELIST_START_TIME = _whitelistStartTime;
         PUBLIC_START_TIME = _publicStartTime;
         MERKLE_ROOT = _merkleRoot;
+    }
+
+    /// @notice Gets the current price of tokens
+    /// @return The current price of tokens
+    function getCurrentPrice() public view returns (uint256) {
+        uint256 soldTokens = INITIAL_SUPPLY - TOKEN.balanceOf(address(this));
+        return INITIAL_PRICE + (PRICE_INCREMENT * soldTokens / 1e18);
+    }
+
+    /// @notice Calculates the token amount for a given ETH amount (for buying)
+    /// @param _ethAmount The ETH amount
+    /// @return The token amount
+    function calculateTokenAmountForBuying(uint256 _ethAmount) public view returns (uint256) {
+        uint256 remainingSupply = TOKEN.balanceOf(address(this));
+        uint256 tokenAmount = 0;
+        uint256 ethUsed = 0;
+        uint256 currentPrice = getCurrentPrice();
+
+        while (ethUsed < _ethAmount && tokenAmount < remainingSupply) {
+            if (ethUsed + currentPrice > _ethAmount) break;
+            tokenAmount += 1e18;
+            ethUsed += currentPrice;
+            currentPrice = INITIAL_PRICE + (PRICE_INCREMENT * (INITIAL_SUPPLY - remainingSupply + tokenAmount) / 1e18);
+        }
+
+        return tokenAmount;
+    }
+
+    /// @notice Calculates the ETH amount for a given token amount (for selling)
+    /// @param _tokenAmount The token amount
+    /// @return The ETH amount
+    function calculateEthAmountForSelling(uint256 _tokenAmount) public view returns (uint256) {
+        uint256 soldTokens = INITIAL_SUPPLY - TOKEN.balanceOf(address(this));
+        uint256 ethAmount = 0;
+        for (uint256 i = 0; i < _tokenAmount; i += 1e18) {
+            ethAmount += INITIAL_PRICE + (PRICE_INCREMENT * (soldTokens - i) / 1e18);
+        }
+        return ethAmount;
     }
 
     /// @notice Allows users to buy tokens with ETH
@@ -50,22 +93,33 @@ contract TokenVendor is ReentrancyGuard, Ownable, Pausable, ITokenVendorEventsAn
         if (msg.value == 0) revert InsufficientEth();
         _checkSaleStatus(_proof);
 
-        uint256 tokenAmount = msg.value * TOKENS_PER_ETH;
+        uint256 tokenAmount = calculateTokenAmountForBuying(msg.value);
+        if (tokenAmount == 0) revert InsufficientTokens();
         if (TOKEN.balanceOf(address(this)) < tokenAmount) revert InsufficientTokens();
 
         TOKEN.safeTransfer(msg.sender, tokenAmount);
-        emit TokensPurchased(msg.sender, msg.value, tokenAmount);
+
+        uint256 ethCost = msg.value;
+        uint256 excessEth = msg.value - ethCost;
+        if (excessEth > 0) {
+            _safeTransferETH(msg.sender, excessEth);
+        }
+
+        emit TokensPurchased(msg.sender, ethCost, tokenAmount);
     }
 
     /// @notice Allows users to sell tokens for ETH
     /// @param _amount Amount of tokens to sell
     function sellTokens(uint256 _amount) public nonReentrant whenNotPaused {
         if (_amount == 0) revert ZeroAmount();
-        uint256 ethAmount = _amount / TOKENS_PER_ETH;
+        uint256 ethAmount = calculateEthAmountForSelling(_amount);
         if (address(this).balance < ethAmount) revert InsufficientEthInContract();
 
         TOKEN.safeTransferFrom(msg.sender, address(this), _amount);
-        _safeTransferETH(msg.sender, ethAmount);
+
+        (bool sent,) = payable(msg.sender).call{ value: ethAmount }("");
+        if (!sent) revert EthTransferFailed();
+
         emit TokensSold(msg.sender, _amount, ethAmount);
     }
 
