@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.8.25 <0.9.0;
+pragma solidity 0.8.25;
 
 import { BlockfulToken } from "../src/BlockfulToken.sol";
 import { TokenVendor } from "../src/TokenVendor.sol";

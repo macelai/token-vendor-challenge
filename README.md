@@ -15,41 +15,7 @@ of two main contracts:
 To get started with this project, follow these steps:
 
 1. Clone this repository.
-2. Run `npm install` to install Node.js dependencies
-
-## Your Tasks
-
-1. Implement the `BlockfulToken` contract:
-
-   - It should be an ERC20 token with a name, symbol, and 18 decimals.
-   - Initial supply should be 1,000,000 tokens.
-
-2. Implement the `TokenVendor` contract with the following functionality:
-
-   - Allow users to buy tokens with ETH (1 ETH = 100 tokens)
-   - Allow users to sell tokens back to the contract
-   - Allow the owner to withdraw ETH from the contract
-   - Implement proper access control (only owner can withdraw)
-   - Emit events for token purchases, sales, and ETH withdrawals
-
-3. Complete the test file `test/TokenVendor.t.sol`:
-
-   - We've provided some basic "happy path" tests
-   - Implement additional tests for edge cases and potential failure scenarios
-   - Aim for at least 90% test coverage
-
-4. Update this README with:
-   - Any additional setup or testing instructions
-   - An explanation of your design decisions
-   - Any potential improvements or considerations for a real-world deployment
-
-## Bonus Tasks
-
-If you complete the main tasks and want to demonstrate more advanced skills:
-
-1. Implement a simple dynamic pricing mechanism (e.g., price increases as supply decreases)
-2. Add a feature to pause/unpause the contract (owner only)
-3. Implement a whitelist system for early access to token sales
+2. Run `yarn install` to install dependencies.
 
 ## Usage
 
@@ -58,20 +24,70 @@ Here are some common commands you'll need:
 ### Build
 
 ```sh
-npm run build
+yarn build
 ```
 
 ### Test
 
 ```sh
-npm run  test
+yarn test
 ```
 
 ### Coverage
 
 ```sh
-npm run test:coverage
+yarn coverage
 ```
+
+## Design Decisions and Implementation Details
+
+### Merkle Tree Whitelist
+
+I chose to implement a Merkle tree-based whitelist for the following reasons:
+
+1. Gas Efficiency: Merkle trees are highly gas-efficient for large whitelists, as users only need to provide a small
+   proof instead of storing the entire whitelist on-chain.
+2. Scalability: Merkle trees can handle large whitelists without significant increase in gas costs or storage
+   requirements.
+3. Flexibility: The whitelist can be easily updated off-chain without modifying the contract, only the merkle root needs
+   to be updated.
+
+Other approaches considered:
+
+- On-chain mapping of addresses
+  - Which are simple but can be expensive for large whitelists.
+- Signature-based whitelisting
+  - Which move the whitelist off-chain but require careful key management.
+
+### Dynamic Pricing Mechanism
+
+I implemented a simple dynamic pricing mechanism where the token price increases as the supply decreases. This
+encourages early participation and reflects the changing demand for tokens.
+
+### Timed Sales
+
+The contract implements two sale phases:
+
+1. Whitelist Sale: Only whitelisted addresses can participate.
+2. Public Sale: Open to all participants.
+
+This allows for a fair distribution of tokens and prioritizes early supporters.
+
+### Security Measures
+
+- ReentrancyGuard: Prevents reentrancy attacks.
+- Ownable: Restricts certain functions to the contract owner.
+- Pausable: Allows pausing the contract in case of emergencies.
+- SafeERC20: Ensures safe token transfers.
+
+## Your Tasks
+
+1. Review the implementation of `BlockfulToken` and `TokenVendor` contracts.
+2. Complete the test file `test/TokenVendor.t.sol`:
+   - Add more edge cases and potential failure scenarios.
+   - Aim for at least 90% test coverage.
+3. Update the deployment script if necessary.
+4. Consider any potential improvements or considerations for a real-world deployment.
 
 ## Evaluation Criteria
 
