@@ -23,6 +23,7 @@ verbosity = 4
 goerli = { key = "${API_KEY_ETHERSCAN}" }
 mainnet = { key = "${API_KEY_ETHERSCAN}" }
 sepolia = { key = "${API_KEY_ETHERSCAN}" }
+base_sepolia = { key = "${API_KEY_ETHERSCAN}" }
 
 [fmt]
 bracket_spacing = true
@@ -38,6 +39,7 @@ wrap_comments = true
 arbitrum = "https://arbitrum-mainnet.infura.io/v3/${API_KEY_INFURA}"
 avalanche = "https://avalanche-mainnet.infura.io/v3/${API_KEY_INFURA}"
 base = "https://mainnet.base.org"
+base_sepolia = "https://base-sepolia.g.alchemy.com/v2/${API_KEY_ALCHEMY}"
 bnb_smart_chain = "https://bsc-dataseed.binance.org"
 gnosis_chain = "https://rpc.gnosischain.com"
 goerli = "https://goerli.infura.io/v3/${API_KEY_INFURA}"

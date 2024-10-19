@@ -36,6 +36,8 @@
     "test": "forge test -vvv",
     "test:coverage": "forge coverage",
     "test:coverage:report": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage",
-    "deploy": "forge script script/Deploy.s.sol:Deploy --rpc-url http://localhost:8545 --broadcast"
+    "deploy": "forge script script/Deploy.s.sol:Deploy --rpc-url http://localhost:8545 --broadcast",
+    "deploy:base-sepolia": "forge script script/Deploy.s.sol:Deploy --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify -vvvv --private-key $BASE_SEPOLIA_PRIVATE_KEY",
+    "generate-merkle-proof": "forge script script/GenerateMerkleProof.s.sol:GenerateMerkleProof"
   }
 }

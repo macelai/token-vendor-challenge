@@ -73,6 +73,57 @@ The contract implements two sale phases:
 
 This allows for a fair distribution of tokens and prioritizes early supporters.
 
+### Testnet Deployment
+
+The contracts have been deployed to Base Sepolia testnet:
+
+- TokenVendor:
+  [0x41d0295a3d569ce352005c74a779d15a1a20026d](https://sepolia.basescan.org/address/0x41d0295a3d569ce352005c74a779d15a1a20026d)
+- BlockfulToken:
+  [0x2fb7decc8dece6b2f79e24cc836d0029b3500a62](https://sepolia.basescan.org/address/0x2fb7decc8dece6b2f79e24cc836d0029b3500a62)
+
+### Generate Merkle Proof
+
+A script has been created to generate Merkle proofs for whitelisted addresses. It could be improved by reading and
+writing to files. You can run it using:
+
+```sh
+yarn run generate-merkle-proof
+```
+
+Example output:
+
+```
+== Logs ==
+  Merkle Root:
+  0x63aebfd6c25f7cb1c061ae0e47e2f791805738b05d65798948a074772fdb2dc5
+  Proof for address 0x97CcF8F927045E4C5f936832d14904A68e595380
+  0x05d950397ccecc95c775a4c4011d79412941ab20aa08cc5522707bb4a8f612e8
+
+  Proof for address 0x6B2760f5C87add9d2f2AB99bb0F3afEF8ec27B42
+  0x87c8b8393ee586832bdaa693790b61a49e0eb54a2f6181524d8aee9f4d880b9a
+```
+
+## Testing
+
+General tests have been conducted to ensure the proper functioning of the contracts. For more details, refer to the test
+files in the `test/` directory.
+
+### Coverage
+
+| File                | % Lines        | % Statements   | % Branches     | % Funcs        |
+| ------------------- | -------------- | -------------- | -------------- | -------------- |
+| src/TokenVendor.sol | 95.92% (47/49) | 96.15% (75/78) | 92.31% (24/26) | 90.91% (10/11) |
+
+## Possible Improvements
+
+The current dynamic pricing mechanism could be enhanced by implementing a more sophisticated Automated Market Maker
+(AMM) model similar to decentralized exchanges. This approach would use the constant product formula (x \* y = k) to
+determine token prices based on the current reserves. It would provide more efficient and responsive pricing, improved
+market depth, and reduced price impact for larger trades. However, implementing this would require significant changes
+to the contract structure and introduce new considerations like complex mathematical models and potential arbitrage
+opportunities.
+
 ### Security Measures
 
 - ReentrancyGuard: Prevents reentrancy attacks.
