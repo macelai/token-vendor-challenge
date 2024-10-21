@@ -61,30 +61,47 @@ contract TokenVendor is ReentrancyGuard, Ownable, Pausable, ITokenVendorEventsAn
     /// @return The token amount
     function calculateTokenAmountForBuying(uint256 _ethAmount) public view returns (uint256) {
         uint256 remainingSupply = TOKEN.balanceOf(address(this));
-        uint256 tokenAmount = 0;
-        uint256 ethUsed = 0;
-        uint256 currentPrice = getCurrentPrice();
+        uint256 soldTokens = INITIAL_SUPPLY - remainingSupply;
 
-        while (ethUsed < _ethAmount && tokenAmount < remainingSupply) {
-            if (ethUsed + currentPrice > _ethAmount) break;
-            tokenAmount += 1e18;
-            ethUsed += currentPrice;
-            currentPrice = INITIAL_PRICE + (PRICE_INCREMENT * (INITIAL_SUPPLY - remainingSupply + tokenAmount) / 1e18);
-        }
+        // Solve quadratic equation: 0 = a*n^2 + b*n + c
+        // Where n is the number of tokens to buy
+        uint256 a = PRICE_INCREMENT;
+        uint256 b = 2 * (INITIAL_PRICE + PRICE_INCREMENT * soldTokens / 1e18) - PRICE_INCREMENT;
+        int256 c = -2 * int256(_ethAmount);
 
-        return tokenAmount;
+        // Calculate discriminant
+        uint256 discriminant = b * b + 4 * a * uint256(-c);
+        uint256 sqrtDiscriminant = sqrt(discriminant);
+
+        // Calculate n using quadratic formula, rounding down and scaling up to ETH decimals
+        uint256 n = (sqrtDiscriminant - b) / (2 * a) * 1e18;
+        // Ensure we don't exceed remaining supply
+        return n > remainingSupply ? remainingSupply : n;
     }
 
-    /// @notice Calculates the ETH amount for a given token amount (for selling)
-    /// @param _tokenAmount The token amount
-    /// @return The ETH amount
+    /// @notice Calculates the ETH amount received for selling a given token amount
+    /// @param _tokenAmount The amount of tokens to sell
+    /// @return The ETH amount to be received
     function calculateEthAmountForSelling(uint256 _tokenAmount) public view returns (uint256) {
-        uint256 soldTokens = INITIAL_SUPPLY - TOKEN.balanceOf(address(this));
-        uint256 ethAmount = 0;
-        for (uint256 i = 0; i < _tokenAmount; i += 1e18) {
-            ethAmount += INITIAL_PRICE + (PRICE_INCREMENT * (soldTokens - i) / 1e18);
-        }
-        return ethAmount;
+        uint256 currentSupply = TOKEN.balanceOf(address(this));
+        uint256 soldTokens = INITIAL_SUPPLY - currentSupply;
+
+        // Ensure we don't exceed current supply
+        uint256 tokensToSell = _tokenAmount > currentSupply ? currentSupply : _tokenAmount;
+
+        // Calculate the first term of the arithmetic progression (current price)
+        uint256 a1 = INITIAL_PRICE + (PRICE_INCREMENT * (soldTokens - 1e18) / 1e18);
+
+        // Calculate the last term of the arithmetic progression (price decrements)
+        uint256 an = a1 - (PRICE_INCREMENT * (tokensToSell - 1e18) / 1e18);
+
+        // Use the arithmetic progression sum formula: S = n * (a1 + an) / 2
+        uint256 ethAmount = (tokensToSell / 2) * (a1 + an);
+
+        // Scale down to ETH decimals
+        uint256 scaledEthAmount = ethAmount / 1e18;
+
+        return scaledEthAmount;
     }
 
     /// @notice Allows users to buy tokens with ETH
@@ -99,7 +116,7 @@ contract TokenVendor is ReentrancyGuard, Ownable, Pausable, ITokenVendorEventsAn
 
         TOKEN.safeTransfer(msg.sender, tokenAmount);
 
-        uint256 ethCost = msg.value;
+        uint256 ethCost = calculateEthAmountForSelling(tokenAmount);
         uint256 excessEth = msg.value - ethCost;
         if (excessEth > 0) {
             _safeTransferETH(msg.sender, excessEth);
@@ -171,5 +188,14 @@ contract TokenVendor is ReentrancyGuard, Ownable, Pausable, ITokenVendorEventsAn
     /// @dev Prevents accidental ETH transfers to the contract
     receive() external payable {
         revert DirectEthTransfer();
+    }
+
+    function sqrt(uint256 x) internal pure returns (uint256 y) {
+        uint256 z = (x + 1) / 2;
+        y = x;
+        while (z < y) {
+            y = z;
+            z = (x / z + z) / 2;
+        }
     }
 }

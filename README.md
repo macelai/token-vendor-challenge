@@ -61,8 +61,30 @@ Other approaches considered:
 
 ### Dynamic Pricing Mechanism
 
-I implemented a simple dynamic pricing mechanism where the token price increases as the supply decreases. This
-encourages early participation and reflects the changing demand for tokens.
+The contract uses arithmetic progression to model dynamic pricing. For buying, it solves a quadratic equation derived
+from the sum of an arithmetic sequence, where the progression represents increasing token prices. This calculates the
+maximum number of tokens purchasable with a given ETH amount. For selling, it applies the arithmetic progression sum
+formula directly. It calculates the first term (current price) and last term (price after selling) of the progression,
+then uses these to compute the total ETH amount received for selling a specific number of tokens. Both functions account
+for remaining supply and scale results appropriately for ETH decimals.
+
+Using a online calculator, I was able to verify the formulas:
+
+- [Arithmetic Progression Calculator](https://www.calculadoraonline.com.br/progressao-aritmetica)
+
+We can see with the current params of the contract, 1 ether should be able to buy 132 tokens. And if we sell 132 tokens,
+we should receive 0.9966 ether.
+
+![Formula Verification](assets/formula.png)
+
+### Price Calculation Visualization
+
+The dynamic pricing mechanism can be visualized as follows:
+
+![Dynamic Pricing Graph](assets/price.png)
+
+This graph illustrates how the token price increases as more tokens are sold, following the arithmetic progression
+defined in the contract.
 
 ### Timed Sales
 
@@ -111,9 +133,11 @@ files in the `test/` directory.
 
 ### Coverage
 
-| File                | % Lines        | % Statements   | % Branches     | % Funcs        |
-| ------------------- | -------------- | -------------- | -------------- | -------------- |
-| src/TokenVendor.sol | 95.92% (47/49) | 96.15% (75/78) | 92.31% (24/26) | 90.91% (10/11) |
+Only `fallback` method not tested.
+
+| File                | % Lines        | % Statements    | % Branches     | % Funcs        |
+| ------------------- | -------------- | --------------- | -------------- | -------------- |
+| src/TokenVendor.sol | 98.21% (55/56) | 98.00% (98/100) | 95.83% (23/24) | 91.67% (11/12) |
 
 ## Possible Improvements
 
